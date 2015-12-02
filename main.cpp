@@ -1,72 +1,46 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include "Brainfuck.h"
+#include "StdIoInterpreter.h"
+#include "CCompiler.h"
 
-class StdIoSemantics : public Brainfuck::Semantics
+static bool readFile(const std::string & filename, std::string & contents)
 {
-public:
-    StdIoSemantics(size_t size = 30000)
-            : _ptr(0)
-    {
-        _array.reserve(size);
-    }
-
-    virtual void IncrementPointer()
-    {
-        if (_ptr < _array.size() - 1)
-            _ptr++;
-    }
-
-    virtual void DecrementPointer()
-    {
-        if (_ptr > 0)
-            _ptr--;
-    }
-
-    virtual void IncrementData()
-    {
-        _array[_ptr]++;
-    }
-
-    virtual void DecrementData()
-    {
-        _array[_ptr]--;
-    }
-
-    virtual void ReadData()
-    {
-        int ch = std::getchar();
-        if (ch != EOF)
-            _array[_ptr] = (unsigned char)ch;
-    }
-
-    virtual void WriteData()
-    {
-        std::putchar(_array[_ptr]);
-    }
-
-    virtual bool TestZero() const
-    {
-        return _array[_ptr] == 0;
-    }
-
-protected:
-    std::vector<unsigned char> _array;
-    size_t _ptr;
-};
+    std::ifstream file(filename);
+    if(!file.is_open())
+        return false;
+    std::string str;
+    while(std::getline(file, str))
+        contents += str + "\n";
+    file.close();
+    return true;
+}
 
 int main(int argc, char* argv[])
 {
-    auto interpreter = Brainfuck();
-    auto code = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.";
-    auto error = interpreter.Parse(code);
+    if(argc < 2)
+    {
+        std::cout << "usage: BrainfuckInterpreter file.bf [i/c]" << std::endl;
+        return -1;
+    }
+
+    std::string code;
+    if(!readFile(argv[1], code))
+    {
+        std::cout << "failed to read input file!" << std::endl;
+        return -1;
+    }
+
+    auto brainfuck = Brainfuck();
+    auto error = brainfuck.Parse(code);
     if (error != Brainfuck::Success)
     {
         std::string errorName;
         switch (error)
         {
-            case Brainfuck::ErrorNonMatchingBracket:
-                errorName = "ErrorNonMatchingBracket";
+            case Brainfuck::ErrorBracketMismatch:
+                errorName = "ErrorBracketMismatch";
                 break;
 
             case Brainfuck::GenericError:
@@ -77,10 +51,28 @@ int main(int argc, char* argv[])
                 errorName = "UNKNOWN";
                 break;
         }
-        std::cout << "There was an error parsing (" << errorName << ")" << std::endl;
+        int line, column;
+        brainfuck.GetLocation(line, column);
+        std::cout << "There was an error parsing (" << errorName << ") on line " << line << " column " << column << std::endl;
         return -1;
     }
-    auto context = StdIoSemantics();
-    interpreter.Execute(context);
+
+    auto mode = std::string(argc > 2 ? argv[2] : "i");
+    if(mode == "i") //interpret the file
+    {
+        auto semantics = StdIoSemantics();
+        brainfuck.Execute(semantics);
+    }
+    else if(mode == "c") //compile to c
+    {
+        auto compiler = CCompiler();
+        brainfuck.Compile(compiler);
+        std::cout << compiler.GetCode();
+    }
+    else
+    {
+        std::cout << "Unknown mode!" << std::endl;
+        return -1;
+    }
     return 0;
 }

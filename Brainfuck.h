@@ -11,7 +11,7 @@ public:
     enum ParseError
     {
         Success,
-        ErrorNonMatchingBracket,
+        ErrorBracketMismatch,
         GenericError
     };
 
@@ -25,6 +25,19 @@ public:
         virtual void ReadData() = 0;
         virtual void WriteData() = 0;
         virtual bool TestZero() const = 0;
+    };
+
+    class Compiler
+    {
+    public:
+        virtual void IncrementPointer() = 0;
+        virtual void DecrementPointer() = 0;
+        virtual void IncrementData() = 0;
+        virtual void DecrementData() = 0;
+        virtual void ReadData() = 0;
+        virtual void WriteData() = 0;
+        virtual void JumpForward(int id) = 0;
+        virtual void JumpBackward(int id) = 0;
     };
 
     Brainfuck()
@@ -59,7 +72,7 @@ public:
 
                     case JumpBackward:
                         if (!bracketStack.size()) //empty bracket stack means bracket mismatch
-                            return ErrorNonMatchingBracket;
+                            return ErrorBracketMismatch;
 
                         matchingBracket = bracketStack.back(); //pop the last element from the bracket stack
                         bracketStack.pop_back();
@@ -75,9 +88,18 @@ public:
                 }
             }
             else
+            {
+                if(ch == '\n')
+                {
+                    _line++;
+                    _column = 1;
+                }
+                else if(ch != '\r')
+                    _column++;
                 _commands.push_back(CommandNode(Unknown)); //add an unknown (empty) command to the list
+            }
         }
-        return bracketStack.size() ? ErrorNonMatchingBracket : Success; //non-empty bracket stack means bracket mismatch
+        return bracketStack.size() ? ErrorBracketMismatch : Success; //non-empty bracket stack means bracket mismatch
     }
 
     void Execute(Semantics & semantics)
@@ -131,6 +153,56 @@ public:
         }
     }
 
+    void Compile(Compiler & compiler)
+    {
+        for(const auto & command : _commands)
+        {
+            switch(command.command)
+            {
+                case Unknown: //unknown commands do nothing (this allows comments)
+                    break;
+
+                case IncrementPointer:
+                    compiler.IncrementPointer();
+                    break;
+
+                case DecrementPointer:
+                    compiler.DecrementPointer();
+                    break;
+
+                case IncrementData:
+                    compiler.IncrementData();
+                    break;
+
+                case DecrementData:
+                    compiler.DecrementData();
+                    break;
+
+                case WriteData:
+                    compiler.WriteData();
+                    break;
+
+                case ReadData:
+                    compiler.ReadData();
+                    break;
+
+                case JumpForward:
+                    compiler.JumpForward(command.matchingBracket);
+                    break;
+
+                case JumpBackward:
+                    compiler.JumpBackward(command.matchingBracket);
+                    break;
+            }
+        }
+    }
+
+    void GetLocation(int & line, int & column)
+    {
+        line = _line;
+        column = _column;
+    }
+
 private:
     enum Command
     {
@@ -159,6 +231,8 @@ private:
 
     std::vector<CommandNode> _commands;
     std::unordered_map<char, Command> _commandMap;
+    int _line = 1;
+    int _column = 1;
 };
 
 #endif //BRAINFUCK_H
