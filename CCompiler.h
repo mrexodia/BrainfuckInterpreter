@@ -50,16 +50,16 @@ public:
         addLine("*ptr = getchar();");
     }
 
-    virtual void JumpForward(int id)
+    virtual void JumpForward(int src, int dest)
     {
-        _code += makeIndent() + "while (*ptr) {\n";
+        addLine("while (*ptr) {");
         _indent += 4;
     }
 
-    virtual void JumpBackward(int id)
+    virtual void JumpBackward(int src, int dest)
     {
         _indent -= 4;
-        _code += makeIndent() + "}\n";
+        addLine("}");
     }
 
     std::string GetCode()
@@ -74,7 +74,7 @@ protected:
     std::string makeIndent()
     {
         std::string result;
-        for(int i=0; i<_indent; i++)
+        for (int i = 0; i < _indent; i++)
             result += " ";
         return result;
     }

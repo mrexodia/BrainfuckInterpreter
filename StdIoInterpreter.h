@@ -3,10 +3,10 @@
 
 #include "Brainfuck.h"
 
-class StdIoSemantics : public Brainfuck::Semantics
+class StdIoInterpreter : public Brainfuck::Interpreter
 {
 public:
-    StdIoSemantics(size_t size = 30000)
+    StdIoInterpreter(size_t size = 30000)
             : _ptr(0)
     {
         _array.reserve(size);

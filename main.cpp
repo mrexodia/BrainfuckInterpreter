@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
     auto mode = std::string(argc > 2 ? argv[2] : "i");
     if(mode == "i") //interpret the file
     {
-        auto semantics = StdIoSemantics();
+        auto semantics = StdIoInterpreter();
         brainfuck.Execute(semantics);
     }
     else if(mode == "c") //compile to c

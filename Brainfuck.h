@@ -15,7 +15,7 @@ public:
         GenericError
     };
 
-    class Semantics
+    class Interpreter
     {
     public:
         virtual void IncrementPointer() = 0;
@@ -36,8 +36,8 @@ public:
         virtual void DecrementData() = 0;
         virtual void ReadData() = 0;
         virtual void WriteData() = 0;
-        virtual void JumpForward(int id) = 0;
-        virtual void JumpBackward(int id) = 0;
+        virtual void JumpForward(int src, int dest) = 0;
+        virtual void JumpBackward(int src, int dest) = 0;
     };
 
     Brainfuck()
@@ -89,12 +89,12 @@ public:
             }
             else
             {
-                if(ch == '\n')
+                if (ch == '\n')
                 {
                     _line++;
                     _column = 1;
                 }
-                else if(ch != '\r')
+                else if (ch != '\r')
                     _column++;
                 _commands.push_back(CommandNode(Unknown)); //add an unknown (empty) command to the list
             }
@@ -102,13 +102,13 @@ public:
         return bracketStack.size() ? ErrorBracketMismatch : Success; //non-empty bracket stack means bracket mismatch
     }
 
-    void Execute(Semantics & semantics)
+    void Execute(Interpreter & semantics)
     {
         auto commandCount = _commands.size();
         if (!_commands.size())
             return;
 
-        for(size_t currentCommand = 0; currentCommand < commandCount; currentCommand++)
+        for (size_t currentCommand = 0; currentCommand < commandCount; currentCommand++)
         {
             unsigned char byte;
             switch (_commands[currentCommand].command)
@@ -155,9 +155,11 @@ public:
 
     void Compile(Compiler & compiler)
     {
-        for(const auto & command : _commands)
+        auto commandCount = _commands.size();
+        for (size_t currentCommand = 0; currentCommand < commandCount; currentCommand++)
         {
-            switch(command.command)
+            const auto & command = _commands[currentCommand];
+            switch (command.command)
             {
                 case Unknown: //unknown commands do nothing (this allows comments)
                     break;
@@ -187,11 +189,11 @@ public:
                     break;
 
                 case JumpForward:
-                    compiler.JumpForward(command.matchingBracket);
+                    compiler.JumpForward(currentCommand, command.matchingBracket);
                     break;
 
                 case JumpBackward:
-                    compiler.JumpBackward(command.matchingBracket);
+                    compiler.JumpBackward(currentCommand, command.matchingBracket);
                     break;
             }
         }
